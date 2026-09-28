@@ -1,9 +1,9 @@
 'use client'
 
 import React from 'react'
-import { Sidebar } from '@/components/layout/Sidebar'
-import { Header } from '@/components/layout/Header'
-import { FleetProvider } from '@/context/FleetContext'
+import { Sidebar } from '../../components/layout/Sidebar'
+import { Header } from '../../components/layout/Header'
+import { FleetProvider } from '../context/FleetContext'
 
 export default function DashboardLayout({
   children,
