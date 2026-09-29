@@ -82,8 +82,9 @@ export default function VeiculosPage() {
     setFormData(prev => ({ ...prev, [name]: formattedValue }));
   };
 
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+  // Permite receber string, null ou undefined e faz o fallback seguro para string vazia
+  const handleSelectChange = (name: string, value: string | null | undefined) => {
+    setFormData(prev => ({ ...prev, [name]: value || '' }));
   };
 
   const iniciarSalvamento = () => setIsAlertOpen(true);
