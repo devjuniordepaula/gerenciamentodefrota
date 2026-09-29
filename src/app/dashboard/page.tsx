@@ -1,31 +1,20 @@
-'use client'
+import { DashboardClient } from "./DashboardCliente";
 
-import { useFleet } from '../context/FleetContext'
-import { DashboardView } from '../../components/views/DashboardView'
-import { SectorsView } from '../../components/views/SectorsView'
-import { ExpensesView } from '../../components/views/ExpensesView'
-// ... importe as outras views
+export default async function DashboardPage() {
+  // VIBE CODING: Aqui no futuro faremos fetch paralelo no Supabase
+  // const [vehicles, expenses] = await Promise.all([
+  //   supabase.from('vehicles').select('*'),
+  //   supabase.from('expenses').select('*')
+  // ]);
 
-export default function DashboardRouter() {
-  const { activeTab } = useFleet()
+  // Dados mockados para você ver a interface funcionando HOJE
+  const metrics = {
+    totalVehicles: 42,
+    activeVehicles: 38,
+    monthlyBudget: 150000,
+    spentThisMonth: 85400,
+    pendingExpenses: 12,
+  };
 
-  // Como seus componentes originais usavam abas (activeTab) em vez de URLs reais,
-  // podemos manter essa lógica de SPA (Single Page Application) para o MVP rodar instantaneamente.
-  // Depois, refatoramos para URLs reais do Next.js (/dashboard/sectors, etc).
-
-  const renderView = () => {
-    switch (activeTab) {
-      case 'dashboard': return <DashboardView />
-      case 'sectors': return <SectorsView />
-      case 'expenses': return <ExpensesView />
-      // Adicione os demais cases aqui
-      default: return <DashboardView />
-    }
-  }
-
-  return (
-    <div className="animate-in fade-in duration-500">
-      {renderView()}
-    </div>
-  )
+  return <DashboardClient metrics={metrics} />;
 }
