@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, Truck, Building2, Receipt, 
-  Wrench, Users2, LogOut, ChevronLeft, ChevronRight, CarFront
+  Wrench, Users2, LogOut, ChevronLeft, ChevronRight, CarFront, ShieldCogCorner
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,12 @@ const navGroups = [
     title: "Financeiro",
     items: [
       { id: '/despesas', label: 'Gastos & Despesas', icon: Receipt },
+    ]
+  },
+  {
+    title: "Configurações",
+    items: [
+      { id: '/configuracoes', label: 'Configuração', icon: ShieldCogCorner },
     ]
   }
 ];
