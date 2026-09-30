@@ -2,8 +2,7 @@
 
 import React from 'react';
 import { usePathname } from 'next/navigation';
-import { Sidebar } from './Sidebar';
-
+import { Sidebar } from '@/components/Sidebar'
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   
