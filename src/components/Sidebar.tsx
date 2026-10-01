@@ -1,168 +1,210 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, Truck, Building2, Receipt, 
-  Wrench, Users2, LogOut, ChevronLeft, ChevronRight, CarFront, ShieldCogCorner
-} from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  X, LayoutDashboard, Truck, Building2, Receipt, 
+  Wrench, Users2, LogOut, ChevronLeft, ChevronRight, 
+  CarFront, Menu, Settings
+} from "lucide-react";
+import { cn } from "../../lib/utils";
 
-// --- ESTRUTURA DE NAVEGAÇÃO AGRUPADA ---
-const navGroups = [
+type MenuItem = {
+  label: string;
+  href: string;
+  icon: any;
+};
+
+type MenuGroup = {
+  titulo: string;
+  items: MenuItem[];
+};
+
+// --- ESTRUTURA DE NAVEGAÇÃO ESPELHADA DA IMAGEM ---
+const menuGroups: MenuGroup[] = [
   {
-    title: "Geral",
-    items: [{ id: '/painel', label: 'Visão Geral & Saldo', icon: LayoutDashboard }]
+    titulo: "GERAL",
+    items: [{ href: '/painel', label: 'Visão Geral & Saldo', icon: LayoutDashboard }]
   },
   {
-    title: "Administração",
+    titulo: "ADMINISTRAÇÃO",
     items: [
-      { id: '/setores', label: 'Setores & Custos', icon: Building2 },
-      { id: '/usuarios', label: 'Usuários & Permissões', icon: Users2 },
+      { href: '/setores', label: 'Setores & Custos', icon: Building2 },
+      { href: '/usuarios', label: 'Usuários & Permissões', icon: Users2 },
     ]
   },
   {
-    title: "Operacional",
+    titulo: "OPERACIONAL",
     items: [
-      { id: '/veiculos', label: 'Frota de Veículos', icon: Truck },
-      { id: '/planos', label: 'Planos de Manutenção', icon: Wrench },
+      { href: '/veiculos', label: 'Frota de Veículos', icon: Truck },
+      { href: '/planos', label: 'Planos de Manutenção', icon: Wrench },
     ]
   },
   {
-    title: "Financeiro",
+    titulo: "FINANCEIRO",
     items: [
-      { id: '/despesas', label: 'Gastos & Despesas', icon: Receipt },
+      { href: '/despesas', label: 'Gastos & Despesas', icon: Receipt },
     ]
   },
   {
-    title: "Configurações",
+    titulo: "CONFIGURAÇÕES",
     items: [
-      { id: '/configuracoes', label: 'Configuração', icon: ShieldCogCorner },
+      { href: '/configuracoes', label: 'Configuração', icon: Settings },
     ]
   }
 ];
 
-export function Sidebar() {
+export function Sidebar({ 
+  onLogout,
+  isMobileMenuOpen,
+  setIsMobileMenuOpen 
+}: { 
+  onLogout?: () => void;
+  isMobileMenuOpen?: boolean;
+  setIsMobileMenuOpen?: (open: boolean) => void;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Mock de perfil para visualização
+  const profile = {
+    nome: "Júnior de Paula",
+    perfil: "Administrador",
+    avatar_url: "https://github.com/shadcn.png" 
+  };
 
   return (
-    <aside 
-      className={`relative flex flex-col h-screen bg-slate-900 text-slate-300 transition-all duration-300 ease-in-out border-r border-slate-800 z-20 ${
-        isCollapsed ? 'w-20' : 'w-64'
-      } hidden md:flex`}
-    >
-      {/* BOTÃO DE COLLAPSE (Flutuante na borda) */}
-      <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-8 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white shadow-md hover:bg-blue-700 transition-colors z-30 ring-2 ring-slate-900"
-      >
-        {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-      </button>
+    <>
+      {/* OVERLAY ESCURO NO CELULAR */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 md:hidden transition-opacity"
+          onClick={() => setIsMobileMenuOpen?.(false)}
+        />
+      )}
 
-      {/* HEADER / LOGO */}
-      <div className={`flex items-center h-20 border-b border-slate-800/80 ${isCollapsed ? 'justify-center px-0' : 'px-6'}`}>
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-2 rounded-lg text-white shadow-sm">
-            <CarFront size={20} />
-          </div>
-          {!isCollapsed && (
-            <span className="font-bold text-lg text-white tracking-tight">
-              Frota<span className="text-blue-500">PRO</span>
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* NAVEGAÇÃO PRINCIPAL (Agrupada) */}
-      <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-6 scrollbar-hide">
-        {navGroups.map((group, index) => (
-          <div key={index} className="flex flex-col">
-            
-            {/* Título do Grupo (Oculto se colapsado) */}
-            {!isCollapsed ? (
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 px-3">
-                {group.title}
-              </span>
-            ) : (
-              // Separador visual discreto quando colapsado (exceto no primeiro grupo)
-              index > 0 && <div className="h-px w-8 bg-slate-800 mx-auto mb-2 mt-4" />
-            )}
-
-            {/* Links do Grupo */}
-            <div className="space-y-1">
-              {group.items.map((item) => {
-                const isActive = pathname === item.id;
-                const Icon = item.icon;
-
-                return (
-                  <Link key={item.id} href={item.id}>
-                    <span
-                      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 group relative ${
-                        isActive 
-                          ? 'bg-blue-600/15 text-blue-400' 
-                          : 'hover:bg-slate-800 hover:text-white'
-                      } ${isCollapsed ? 'justify-center' : 'justify-start'}`}
-                      title={isCollapsed ? item.label : undefined}
-                    >
-                      {/* Marcador lateral luminoso quando ativo */}
-                      {isActive && !isCollapsed && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-blue-500 rounded-r-md" />
-                      )}
-
-                      <Icon size={18} className={isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-white'} />
-                      
-                      {!isCollapsed && (
-                        <span className={`text-sm font-medium ${isActive ? 'text-blue-400' : 'text-slate-300 group-hover:text-white'}`}>
-                          {item.label}
-                        </span>
-                      )}
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-
-          </div>
-        ))}
-      </nav>
-
-      {/* FOOTER: PERFIL DO USUÁRIO & LOGOUT */}
-      <div className="border-t border-slate-800/80 p-4 bg-slate-900/50">
-        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
-          
-          <div className="flex items-center gap-3 overflow-hidden">
-            <Avatar className="h-9 w-9 border-2 border-slate-700 shadow-sm">
-              <AvatarImage src="https://github.com/shadcn.png" alt="Gestor" />
-              <AvatarFallback className="bg-slate-800 text-slate-300 font-medium">GS</AvatarFallback>
-            </Avatar>
-            
-            {!isCollapsed && (
-              <div className="flex flex-col truncate">
-                <span className="text-sm font-semibold text-slate-200 truncate">Júnior de Paula</span>
-                <span className="text-[11px] font-medium text-slate-500 truncate">Administrador</span>
-              </div>
-            )}
-          </div>
-
-          {!isCollapsed && (
-            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-rose-400 hover:bg-rose-400/10 shrink-0 h-8 w-8 transition-colors">
-              <LogOut size={18} />
-            </Button>
-          )}
-        </div>
-
-        {/* Botão de Logout centralizado quando colapsado */}
-        {isCollapsed && (
-          <div className="mt-4 flex justify-center">
-            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-rose-400 hover:bg-rose-400/10 shrink-0 h-8 w-8 transition-colors">
-              <LogOut size={18} />
-            </Button>
-          </div>
+      <aside
+        className={cn(
+          "flex flex-col transition-all duration-300 shrink-0",
+          // Cor de fundo cravada no design da imagem (Azul/Slate profundo)
+          "bg-[#0b1120] text-slate-300 border-r border-[#1e293b]",
+          "fixed inset-y-0 left-0 z-50 h-[100dvh] transform",
+          isMobileMenuOpen ? "translate-x-0 w-[260px]" : "-translate-x-full w-[260px]",
+          "md:relative md:translate-x-0 md:h-screen",
+          collapsed ? "md:w-[72px]" : "md:w-[260px]"
         )}
-      </div>
-    </aside>
+      >
+        {/* BOTÃO DE COLLAPSE (Igual ao da imagem: círculo azul flutuante) */}
+        <button
+          onClick={() => setIsMobileMenuOpen ? setIsMobileMenuOpen(false) : setCollapsed(!collapsed)}
+          className="absolute -right-3 top-8 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white shadow-md hover:bg-blue-500 transition-colors z-30"
+          title={collapsed ? "Expandir menu" : "Recolher menu"}
+        >
+          {isMobileMenuOpen ? <X size={14} /> : (collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />)}
+        </button>
+
+        {/* HEADER / LOGO */}
+        <div className={cn("flex items-center h-20 px-4 border-b border-[#1e293b]/80 shrink-0", collapsed ? "justify-center" : "justify-start")}>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="bg-blue-600 p-1.5 rounded-lg shrink-0">
+              <CarFront className="h-6 w-6 text-white" />
+            </div>
+            {!collapsed && (
+              <h1 className="text-xl font-bold text-white tracking-tight leading-tight">
+                Frota<span className="text-blue-500">PRO</span>
+              </h1>
+            )}
+          </div>
+        </div>
+        
+        {/* NAVEGAÇÃO PRINCIPAL */}
+        <nav className="flex-1 overflow-y-auto custom-scrollbar px-3 pt-6 pb-2">
+          {menuGroups.map((grupo, index) => {
+            return (
+              <div key={grupo.titulo} className="mb-6">
+                
+                {/* TÍTULO DO GRUPO */}
+                {!collapsed || isMobileMenuOpen ? (
+                  <h4 className="px-3 mb-3 text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+                    {grupo.titulo}
+                  </h4>
+                ) : (
+                  index !== 0 && <div className="h-px bg-slate-800 w-8 mx-auto mb-4 mt-2" />
+                )}
+
+                <div className="space-y-1">
+                  {grupo.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.href; 
+                    
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsMobileMenuOpen?.(false)}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all relative overflow-hidden group",
+                          isActive
+                            ? "bg-blue-900/30 text-blue-500 font-semibold"
+                            : "text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 font-medium",
+                          collapsed && !isMobileMenuOpen && "justify-center px-0"
+                        )}
+                        title={collapsed && !isMobileMenuOpen ? item.label : undefined}
+                      >
+                        {/* MARCADOR VERTICAL AZUL (Active State da Imagem) */}
+                        {isActive && (
+                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-r-md" />
+                        )}
+
+                        <div className="relative flex items-center justify-center shrink-0">
+                          <Icon
+                            className={cn(
+                              "h-[18px] w-[18px] transition-colors",
+                              isActive ? "text-blue-500" : "text-slate-400 group-hover:text-slate-200"
+                            )}
+                          />
+                        </div>
+                        
+                        {(!collapsed || isMobileMenuOpen) && <span className="truncate">{item.label}</span>}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </nav>
+        
+        {/* FOOTER: PERFIL DO USUÁRIO & LOGOUT */}
+        <div className="p-4 border-t border-[#1e293b] bg-[#070b14] flex items-center justify-between shrink-0">
+          
+          <div className={cn("flex items-center gap-3 min-w-0 flex-1", collapsed && !isMobileMenuOpen && "hidden")}>
+            <div className="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center shrink-0 border border-slate-700 overflow-hidden">
+              <img 
+                src={profile.avatar_url} 
+                alt="Avatar" 
+                className="object-cover h-full w-full"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-slate-200 truncate">{profile.nome}</p>
+              <p className="text-[11px] font-medium text-slate-500 truncate">{profile.perfil}</p>
+            </div>
+          </div>
+
+          <button
+            onClick={onLogout}
+            className={cn(
+              "p-2 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors shrink-0",
+              collapsed && !isMobileMenuOpen && "mx-auto w-full flex justify-center py-2"
+            )}
+            title="Sair do sistema"
+          >
+            <LogOut className="h-5 w-5" />
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

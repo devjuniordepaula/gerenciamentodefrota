@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import Link from 'next/link';
+import { useTheme } from "next-themes";
 
 // --- MOCK DETERMINÍSTICO PARA O DASHBOARD ---
 const kpisMock = {
@@ -187,7 +188,7 @@ export default function PainelPage() {
                 <Tooltip 
                   cursor={{ fill: '#f1f5f9' }} 
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                  formatter={(value: any) => formatarMoeda(Number(value) || 0)}                />
+                  formatter={(value: any) => formatarMoeda(Number(value) || 0)} />
                 <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
                   {graficoCustosMock.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.valor > 2000 ? '#f43f5e' : '#3b82f6'} />

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "@/components/Sidebar"; // Ajuste o caminho se necessário
+import { LayoutWrapper } from "@/components/LayoutWrapper";
+import { ThemeProvider } from "@/components/theme-provider"; // <-- IMPORT AQUI
 
-// Fonte recomendada para SaaS
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -18,22 +18,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className={`${inter.className} bg-slate-50 text-slate-900 antialiased`}>
-        {/* Container principal (Impede rolagem da tela inteira, rola apenas o main) */}
-        <div className="flex h-screen w-full overflow-hidden">
-          
-          {/* Menu Lateral (Desktop) */}
-          <Sidebar />
-
-          {/* Área Principal de Conteúdo */}
-          <main className="flex-1 overflow-y-auto scroll-smooth">
-            {/* O padding é aplicado aqui para manter a respiração das páginas */}
-            <div className="p-4 md:p-8 max-w-[1600px] mx-auto">
-              {children}
-            </div>
-          </main>
-          
-        </div>
+      {/* Removemos o bg-slate-50 fixo daqui, pois o tema cuidará disso */}
+      <body className={`${inter.className} antialiased min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50`}>
+        <ThemeProvider attribute="class" defaultTheme="system" disableTransitionOnChange enableSystem>
+          <LayoutWrapper>
+            {children}
+          </LayoutWrapper>
+        </ThemeProvider>
       </body>
     </html>
   );

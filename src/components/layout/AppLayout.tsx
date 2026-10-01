@@ -13,7 +13,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // Se não for auth, renderiza a estrutura de SaaS com a Sidebar
+  // Se não for auth, renderiza a estrutura de SaaS com a Sidebargit 
   return (
     <div className="flex h-screen w-full bg-slate-50 overflow-hidden text-slate-900 font-sans">
       <Sidebar />
