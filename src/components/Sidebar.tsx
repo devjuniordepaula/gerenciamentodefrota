@@ -39,6 +39,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { href: '/veiculos', label: 'Frota de Veículos', icon: Truck },
       { href: '/planos', label: 'Planos de Manutenção', icon: Wrench },
+      { href: '/inteligencia', label: 'Inteligencia Preditiva', icon: Wrench },
     ]
   },
   {
