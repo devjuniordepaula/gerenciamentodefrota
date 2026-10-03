@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   X, LayoutDashboard, Truck, Building2, Receipt, 
   Wrench, Users2, LogOut, ChevronLeft, ChevronRight, 
-  CarFront, Menu, Settings
+  CarFront, Menu, Settings, AlertTriangle, ShieldCheck
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -38,8 +38,9 @@ const menuGroups: MenuGroup[] = [
     titulo: "OPERACIONAL",
     items: [
       { href: '/veiculos', label: 'Frota de Veículos', icon: Truck },
+      { href: '/veiculos/regularizacao', label: 'Regularização', icon: ShieldCheck }, // <-- Nova Rota
+      { href: '/veiculos/multas', label: 'Gestão de Multas', icon: AlertTriangle }, // <-- Nova Rota
       { href: '/planos', label: 'Planos de Manutenção', icon: Wrench },
-      { href: '/inteligencia', label: 'Inteligencia Preditiva', icon: Wrench },
     ]
   },
   {
