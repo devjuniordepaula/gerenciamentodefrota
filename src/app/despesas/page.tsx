@@ -1,405 +1,273 @@
 'use client'
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Plus, Search, Receipt, TrendingUp, AlertCircle, 
-  ChevronLeft, ChevronRight, Filter, PieChart as PieChartIcon, 
-  Calendar, FileText, CheckCircle2, Clock
+  Receipt, Plus, Truck, DollarSign, TrendingUp, 
+  Building, Wrench, AlertTriangle, ArrowUpRight, BarChart3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTheme } from 'next-themes';
 
-// Componentes do Modal
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// --- MOCK ESTRUTURADO (TABLE_7, TABLE_8 E RANKINGS DE CUSTO/KM) ---
+const custosFrotaMock = [
+  { id: '1', placa: 'ABC-1234', modelo: 'Volvo FH 540', setor: 'Logística Matriz', preventiva: 2400.00, corretivas: 4500.00, pecas: 3800.00, multas: 130.16, docSeguroIpva: 5200.00, kmRodado: 24500 },
+  { id: '2', placa: 'XYZ-9876', modelo: 'Scania R450', setor: 'Filial SP', preventiva: 1800.00, corretivas: 8900.00, pecas: 6100.00, multas: 293.47, docSeguroIpva: 4800.00, kmRodado: 31000 },
+  { id: '3', placa: 'DEF-5544', modelo: 'VW Delivery 11.180', setor: 'Operacional CE', preventiva: 950.00, corretivas: 1200.00, pecas: 850.00, multas: 0.00, docSeguroIpva: 3100.00, kmRodado: 14200 },
+  { id: '4', placa: 'GHI-3322', modelo: 'Mercedes-Benz Atego', setor: 'Logística Matriz', preventiva: 3100.00, corretivas: 11500.00, pecas: 9200.00, multas: 390.00, docSeguroIpva: 4200.00, kmRodado: 38500 },
+];
 
-// Gráficos (Recharts)
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+export default function DespesasConsolidadasPage() {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
-// --- MOCK DETERMINÍSTICO DE DESPESAS ---
-const gerarDespesasMock = () => {
-  const despesas = [];
-  const categorias = ['Peças', 'Serviços', 'Combustível', 'Impostos/Taxas'];
-  const statusList = ['Pago', 'Pendente'];
-  
-  for (let i = 1; i <= 35; i++) {
-    const valor = 150 + ((i * 345) % 3000);
-    const mes = (i % 6) + 1; // Jan a Jun
-    
-    despesas.push({
-      id: i.toString(),
-      descricao: `OS #${1000 + i} - Manutenção Preventiva`,
-      placa: `ABC-${1000 + (i * 73) % 9000}`,
-      categoria: categorias[i % categorias.length],
-      valor: valor,
-      data: `2026-0${mes}-1${(i % 9) + 1}`,
-      status: i % 5 === 0 ? 'Pendente' : 'Pago',
-    });
-  }
-  return despesas.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
-};
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-const estadoInicialFormulario = { descricao: '', placa: '', categoria: '', valor: '', data: '', status: 'Pendente' };
-
-// Cores para o gráfico de rosca (Tailwind Colors hex)
-const CORES_CATEGORIAS = {
-  'Peças': '#3b82f6',       // blue-500
-  'Serviços': '#10b981',    // emerald-500
-  'Combustível': '#f59e0b', // amber-500
-  'Impostos/Taxas': '#f43f5e' // rose-500
-};
-
-export default function DespesasPage() {
-  const [despesas, setDespesas] = useState(gerarDespesasMock());
-  
-  // Estados de Filtro e Paginação
-  const [busca, setBusca] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState<'Todos' | 'Pago' | 'Pendente'>('Todos');
-  const [paginaAtual, setPaginaAtual] = useState(1);
-  const itensPorPagina = 10;
-
-  // Modal
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState(estadoInicialFormulario);
-
-  // --- LÓGICA DE DADOS (KPIs e Gráficos) ---
-  const { kpis, dadosGraficoMes, dadosGraficoCategoria } = useMemo(() => {
-    let totalPago = 0;
-    let totalPendente = 0;
-    
-    const gastosPorMes: Record<string, number> = {};
-    const gastosPorCategoria: Record<string, number> = {};
-
-    despesas.forEach(d => {
-      // KPIs
-      if (d.status === 'Pago') totalPago += d.valor;
-      else totalPendente += d.valor;
-
-      // Agrupamento por Categoria
-      gastosPorCategoria[d.categoria] = (gastosPorCategoria[d.categoria] || 0) + d.valor;
-
-      // Agrupamento por Mês (Simplificado para o mock: extrai o mês da string YYYY-MM-DD)
-      const mesNum = d.data.split('-')[1];
-      const nomeMes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][parseInt(mesNum) - 1];
-      gastosPorMes[nomeMes] = (gastosPorMes[nomeMes] || 0) + d.valor;
-    });
-
-    // Formatação para o Recharts
-    const chartMeses = Object.keys(gastosPorMes).map(mes => ({ name: mes, total: gastosPorMes[mes] }));
-    const chartCategorias = Object.keys(gastosPorCategoria).map(cat => ({ name: cat, value: gastosPorCategoria[cat] }));
-
-    return {
-      kpis: { totalGeral: totalPago + totalPendente, totalPago, totalPendente },
-      dadosGraficoMes: chartMeses.reverse(), // Ordem cronológica mockada
-      dadosGraficoCategoria: chartCategorias
-    };
-  }, [despesas]);
-
-  // --- FILTRAGEM E PAGINAÇÃO ---
-  const despesasFiltradas = useMemo(() => {
-    return despesas.filter(d => {
-      const matchBusca = 
-        d.descricao.toLowerCase().includes(busca.toLowerCase()) || 
-        d.placa.toLowerCase().includes(busca.toLowerCase());
-      const matchStatus = filtroStatus === 'Todos' || d.status === filtroStatus;
-      return matchBusca && matchStatus;
-    });
-  }, [despesas, busca, filtroStatus]);
-
-  const totalPaginas = Math.ceil(despesasFiltradas.length / itensPorPagina);
-  const despesasPaginadas = despesasFiltradas.slice((paginaAtual - 1) * itensPorPagina, paginaAtual * itensPorPagina);
-
-  React.useEffect(() => { setPaginaAtual(1); }, [busca, filtroStatus]);
-
-  // --- HANDLERS ---
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    const formattedValue = name === 'placa' ? value.toUpperCase() : value;
-    setFormData(prev => ({ ...prev, [name]: formattedValue }));
-  };
-
-  const handleSelectChange = (name: string, value: string | null | undefined) => {
-    setFormData(prev => ({ ...prev, [name]: value || '' }));
-  };
-
-  const confirmarCadastro = () => {
-    const novaDespesa = {
-      id: Math.random().toString(36).substr(2, 9),
-      descricao: formData.descricao || 'Despesa Avulsa',
-      placa: formData.placa,
-      categoria: formData.categoria || 'Outros',
-      valor: parseFloat(formData.valor) || 0,
-      data: formData.data || new Date().toISOString().split('T')[0],
-      status: formData.status,
-    };
-
-    setDespesas(prev => [novaDespesa, ...prev]);
-    setIsModalOpen(false);
-    setFormData(estadoInicialFormulario);
-  };
+  const isDark = mounted && resolvedTheme === 'dark';
 
   const formatarMoeda = (valor: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
 
+  // Processamento analítico determinístico (Table_7, Table_8 e Custo/KM)
+  const dadosConsolidados = useMemo(() => {
+    let custoTotalGeral = 0;
+    let kmTotalGeral = 0;
+
+    const processados = custosFrotaMock.map(item => {
+      const custoTotal = item.preventiva + item.corretivas + item.pecas + item.multas + item.docSeguroIpva;
+      const custoPorKm = item.kmRodado > 0 ? custoTotal / item.kmRodado : 0;
+      
+      custoTotalGeral += custoTotal;
+      kmTotalGeral += item.kmRodado;
+
+      return {
+        ...item,
+        custoTotal,
+        custoPorKm
+      };
+    });
+
+    // Ranking de mais onerosos (Table_8) ordenados por Custo Total decrescente
+    const maisOnerosos = [...processados].sort((a, b) => b.custoTotal - a.custoTotal);
+
+    // Ranking por Custo / KM ordenados de forma decrescente
+    const porCustoKm = [...processados].sort((a, b) => b.custoPorKm - a.custoPorKm);
+
+    return {
+      lista: processados,
+      custoTotalGeral,
+      kmTotalGeral,
+      veiculoMaisOneroso: maisOnerosos[0] || null,
+      maisOnerosos,
+      porCustoKm
+    };
+  }, []);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-10">
       
-      {/* CABEÇALHO (H3: Controle do Usuário) */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Gestão de Despesas</h2>
-          <p className="text-sm text-slate-500">Acompanhamento financeiro, ordens de serviço e custos fixos.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Consolidação de Custos da Frota</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Painel gerencial de despesas, custos por KM e indicadores de eficiência. <span className="font-medium text-slate-700 dark:text-slate-300">• Última atualização: 30/09/2026</span>
+          </p>
         </div>
         
-        <Button 
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm w-full sm:w-auto"
-          onClick={() => setIsModalOpen(true)}
-        >
-          <Plus className="w-4 h-4 mr-2" /> Lançar Despesa
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+            <Plus className="w-4 h-4 mr-2" /> Lançar Nova Despesa
+          </Button>
+        </div>
       </div>
 
-      {/* === MODAL DE LANÇAMENTO === */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[500px] bg-white">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Nova Despesa</DialogTitle>
-            <DialogDescription>Lançamento de custos vinculados ou não à frota.</DialogDescription>
-          </DialogHeader>
-
-          <Tabs defaultValue="detalhes" className="w-full mt-2">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="detalhes" className="flex items-center gap-2"><FileText className="w-4 h-4" /> Detalhes</TabsTrigger>
-              <TabsTrigger value="financeiro" className="flex items-center gap-2"><Receipt className="w-4 h-4" /> Valores</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="detalhes" className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Descrição / OS</label>
-                <Input name="descricao" placeholder="Ex: Troca de Óleo - Oficina 1" value={formData.descricao} onChange={handleInputChange} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">Placa (Opcional)</label>
-                  <Input name="placa" placeholder="ABC-1234" value={formData.placa} onChange={handleInputChange} maxLength={8} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">Categoria</label>
-                  <Select value={formData.categoria} onValueChange={(val) => handleSelectChange('categoria', val)}>
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Peças">Peças</SelectItem>
-                      <SelectItem value="Serviços">Serviços</SelectItem>
-                      <SelectItem value="Combustível">Combustível</SelectItem>
-                      <SelectItem value="Impostos/Taxas">Impostos/Taxas</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="financeiro" className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Valor (R$)</label>
-                <Input name="valor" type="number" placeholder="0.00" step="0.01" value={formData.valor} onChange={handleInputChange} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">Data de Venc/Pgto</label>
-                  <Input name="data" type="date" value={formData.data} onChange={handleInputChange} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">Status</label>
-                  <Select value={formData.status} onValueChange={(val) => handleSelectChange('status', val)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Pago">Pago</SelectItem>
-                      <SelectItem value="Pendente">Pendente</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          <DialogFooter className="mt-6 border-t pt-4">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto mb-2 sm:mb-0">Cancelar</Button>
-            <Button className="bg-blue-600 text-white hover:bg-blue-700 w-full sm:w-auto" onClick={confirmarCadastro}>Salvar Despesa</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* === DASHBOARD GRÁFICO & KPIs (Mobile-First Grid) === */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* 3 INDICADORES PRINCIPAIS NO TOPO */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         
-        {/* Coluna 1: KPIs Empilhados */}
-        <div className="flex flex-col gap-4">
-          <Card className="border-slate-200 shadow-xs bg-white">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-semibold text-slate-600 uppercase tracking-wider">Custo Total (Histórico)</CardTitle>
-              <TrendingUp className="w-4 h-4 text-slate-400" />
-            </CardHeader>
-            <CardContent><div className="text-3xl font-bold text-slate-900">{formatarMoeda(kpis.totalGeral)}</div></CardContent>
-          </Card>
-          
-          <Card className="border-slate-200 shadow-xs bg-emerald-50/30">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-semibold text-emerald-700 uppercase tracking-wider">Total Pago</CardTitle>
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-            </CardHeader>
-            <CardContent><div className="text-2xl font-bold text-emerald-600">{formatarMoeda(kpis.totalPago)}</div></CardContent>
-          </Card>
-
-          <Card className="border-slate-200 shadow-xs bg-amber-50/30">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-semibold text-amber-700 uppercase tracking-wider">A Pagar / Pendente</CardTitle>
-              <Clock className="w-4 h-4 text-amber-500" />
-            </CardHeader>
-            <CardContent><div className="text-2xl font-bold text-amber-600">{formatarMoeda(kpis.totalPendente)}</div></CardContent>
-          </Card>
-        </div>
-
-        {/* Coluna 2: Gráfico de Barras (Mes a Mes) */}
-        <Card className="border-slate-200 shadow-xs lg:col-span-1 flex flex-col">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-blue-500" /> Evolução Mensal
-            </CardTitle>
+        {/* Custo Total da Frota */}
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Custo Total da Frota</CardTitle>
+            <DollarSign className="w-4 h-4 text-blue-500" />
           </CardHeader>
-          <CardContent className="flex-1 min-h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dadosGraficoMes} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `R$${val/1000}k`} />
-                  <Tooltip 
-                    cursor={{ fill: '#f1f5f9' }} 
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                    formatter={(value: any) => formatarMoeda(Number(value) || 0)} />
-                  <Bar dataKey="total" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-50">{formatarMoeda(dadosConsolidados.custoTotalGeral)}</div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Soma de preventivas, corretivas, peças e encargos</p>
           </CardContent>
         </Card>
 
-        {/* Coluna 3: Gráfico de Rosca (Peças x Serviços) */}
-        <Card className="border-slate-200 shadow-xs lg:col-span-1 flex flex-col">
-          <CardHeader className="pb-0">
-            <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-              <PieChartIcon className="w-4 h-4 text-blue-500" /> Custos por Categoria
-            </CardTitle>
+        {/* KM Total Rodado */}
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">KM Total Rodado</CardTitle>
+            <Truck className="w-4 h-4 text-emerald-500" />
           </CardHeader>
-          <CardContent className="flex-1 min-h-[200px] flex items-center justify-center relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={dadosGraficoCategoria} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">
-                  {dadosGraficoCategoria.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={CORES_CATEGORIAS[entry.name as keyof typeof CORES_CATEGORIAS] || '#94a3b8'} />
-                  ))}
-                </Pie>
-              <Tooltip 
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                formatter={(value: any) => formatarMoeda(Number(value) || 0)} 
-              />
-              </PieChart>
-            </ResponsiveContainer>
-            {/* Legenda Customizada (Mobile Friendly) */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-              <span className="text-xs text-slate-500 block">Total</span>
-              <span className="font-bold text-slate-900 text-sm">{formatarMoeda(kpis.totalGeral).split(',')[0]}</span>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-50">{dadosConsolidados.kmTotalGeral.toLocaleString('pt-BR')} km</div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Quilometragem acumulada da frota ativa</p>
+          </CardContent>
+        </Card>
+
+        {/* Veículo Mais Oneroso */}
+        <Card className="border-rose-200 dark:border-rose-900/50 bg-rose-50/30 dark:bg-rose-900/10 shadow-xs">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs font-semibold text-rose-700 dark:text-rose-400 uppercase tracking-wider">Veículo Mais Oneroso</CardTitle>
+            <AlertTriangle className="w-4 h-4 text-rose-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold text-rose-600 dark:text-rose-400 truncate">
+              {dadosConsolidados.veiculoMaisOneroso ? `${dadosConsolidados.veiculoMaisOneroso.modelo} (${dadosConsolidados.veiculoMaisOneroso.placa})` : 'N/A'}
             </div>
+            <p className="text-xs text-rose-500 dark:text-rose-400 mt-1">
+              {dadosConsolidados.veiculoMaisOneroso ? formatarMoeda(dadosConsolidados.veiculoMaisOneroso.custoTotal) : 'R$ 0,00'} acumulados
+            </p>
           </CardContent>
         </Card>
 
       </div>
 
-      {/* === TABELA DE DESPESAS === */}
-      <div className="space-y-4">
-        {/* Filtros */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <div className="relative flex-1 w-full max-w-md">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <Input placeholder="Buscar por OS, descrição ou placa..." className="pl-9 bg-slate-50 border-slate-200" value={busca} onChange={(e) => setBusca(e.target.value)} />
-          </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <Filter className="w-4 h-4 text-slate-400 hidden sm:block" />
-            <div className="flex rounded-md shadow-sm">
-              {(['Todos', 'Pago', 'Pendente'] as const).map((status) => (
-                <button key={status} onClick={() => setFiltroStatus(status)} className={`px-4 py-2 text-xs font-medium border first:rounded-l-md last:rounded-r-md -ml-px first:ml-0 transition-colors ${filtroStatus === status ? 'bg-slate-800 text-white border-slate-800 z-10' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>
-                  {status}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Lista/Tabela */}
-        <div className="border border-slate-200 rounded-xl bg-white overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
+      {/* SEÇÃO SECUNDÁRIA: RANKINGS ANALÍTICOS (Table_8 e Custo/KM) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        {/* Ranking de Veículos Mais Onerosos (Table_8) */}
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+          <CardHeader>
+            <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-blue-500" /> Ranking: Veículos Mais Onerosos
+            </CardTitle>
+            <CardDescription className="text-xs dark:text-slate-400">Ativos com maior volume de gastos absolutos.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
             <Table>
-              <TableHeader className="bg-slate-50 border-b border-slate-200">
+              <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
                 <TableRow>
-                  <TableHead className="font-semibold text-slate-700 min-w-[200px]">Descrição</TableHead>
-                  <TableHead className="font-semibold text-slate-700">Categoria</TableHead>
-                  <TableHead className="font-semibold text-slate-700">Data</TableHead>
-                  <TableHead className="font-semibold text-slate-700 text-right">Valor</TableHead>
-                  <TableHead className="font-semibold text-slate-700 text-center">Status</TableHead>
+                  <TableHead className="text-xs font-semibold">Pos.</TableHead>
+                  <TableHead className="text-xs font-semibold">Placa / Veículo</TableHead>
+                  <TableHead className="text-xs font-semibold text-right">Custo Total</TableHead>
+                  <TableHead className="text-xs font-semibold text-right">R$ / KM</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-slate-100">
-                {despesasPaginadas.map((d) => (
-                  <TableRow key={d.id} className="hover:bg-slate-100/60 even:bg-slate-50/50 transition-colors">
+              <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {dadosConsolidados.maisOnerosos.map((v, idx) => (
+                  <TableRow key={v.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                    <TableCell className="font-bold text-xs text-slate-500">#{idx + 1}</TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-bold text-slate-900">{d.descricao}</span>
-                        {d.placa && <span className="text-xs font-mono text-slate-500 mt-0.5 border border-slate-200 bg-white px-1.5 rounded w-fit">{d.placa}</span>}
+                        <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">{v.modelo}</span>
+                        <span className="font-mono text-[11px] text-slate-500">{v.placa}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 text-sm text-slate-600">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CORES_CATEGORIAS[d.categoria as keyof typeof CORES_CATEGORIAS] || '#ccc' }} />
-                        {d.categoria}
-                      </div>
+                    <TableCell className="text-right font-bold text-slate-900 dark:text-slate-100 text-sm">
+                      {formatarMoeda(v.custoTotal)}
                     </TableCell>
-                    <TableCell className="text-sm text-slate-600">
-                      {new Date(d.data).toLocaleDateString('pt-BR')}
-                    </TableCell>
-                    <TableCell className="text-right font-medium text-slate-900">
-                      {formatarMoeda(d.valor)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="outline" className={`font-medium border-0 ${d.status === 'Pago' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                        {d.status}
-                      </Badge>
+                    <TableCell className="text-right font-mono text-xs text-slate-600 dark:text-slate-400">
+                      R$ {v.custoPorKm.toFixed(2)}
                     </TableCell>
                   </TableRow>
                 ))}
-                {despesasPaginadas.length === 0 && (
-                  <TableRow><TableCell colSpan={5} className="text-center py-10 text-slate-500">Nenhuma despesa encontrada.</TableCell></TableRow>
-                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        {/* Ranking por Custo / KM */}
+        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+          <CardHeader>
+            <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-amber-500" /> Ranking: Eficiência (Custo / KM)
+            </CardTitle>
+            <CardDescription className="text-xs dark:text-slate-400">Veículos com maior custo operacional por quilômetro rodado.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
+                <TableRow>
+                  <TableHead className="text-xs font-semibold">Pos.</TableHead>
+                  <TableHead className="text-xs font-semibold">Placa / Veículo</TableHead>
+                  <TableHead className="text-xs font-semibold text-right">R$ / KM</TableHead>
+                  <TableHead className="text-xs font-semibold text-right">Custo Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {dadosConsolidados.porCustoKm.map((v, idx) => (
+                  <TableRow key={v.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                    <TableCell className="font-bold text-xs text-slate-500">#{idx + 1}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">{v.modelo}</span>
+                        <span className="font-mono text-[11px] text-slate-500">{v.placa}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-bold text-amber-600 dark:text-amber-400 text-sm">
+                      R$ {v.custoPorKm.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right text-xs text-slate-600 dark:text-slate-400">
+                      {formatarMoeda(v.custoTotal)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+      </div>
+
+      {/* TABELA PRINCIPAL DE CUSTOS POR VEÍCULO (TABLE_7) */}
+      <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
+        <CardHeader>
+          <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-100">Detalhamento Analítico — Custos por Veículo</CardTitle>
+          <CardDescription className="text-xs dark:text-slate-400">Visão granular por ativo contemplando manutenções, peças, multas e encargos legais.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-slate-50 dark:bg-slate-800/50">
+                <TableRow className="border-slate-200 dark:border-slate-800">
+                  <TableHead className="text-xs font-semibold text-slate-700 dark:text-slate-300">Placa</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-700 dark:text-slate-300">Marca / Modelo</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-700 dark:text-slate-300">Setor / Contrato</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-700 dark:text-slate-300 text-right">Preventivas</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-700 dark:text-slate-300 text-right">Corretivas</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-700 dark:text-slate-300 text-right">Peças</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-700 dark:text-slate-300 text-right">Multas</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-700 dark:text-slate-300 text-right">Doc/Seguro/IPVA</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-700 dark:text-slate-300 text-right font-bold">Custo Total</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-700 dark:text-slate-300 text-center">KM Total</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-700 dark:text-slate-300 text-right font-bold">R$ / KM</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {dadosConsolidados.lista.map((item) => (
+                  <TableRow key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                    <TableCell className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                      <span className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded text-xs">{item.placa}</span>
+                    </TableCell>
+                    <TableCell className="font-medium text-slate-900 dark:text-slate-200 text-sm whitespace-nowrap">{item.modelo}</TableCell>
+                    <TableCell className="text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">{item.setor}</TableCell>
+                    <TableCell className="text-right text-xs text-slate-600 dark:text-slate-400 font-mono">{formatarMoeda(item.preventiva)}</TableCell>
+                    <TableCell className="text-right text-xs text-slate-600 dark:text-slate-400 font-mono">{formatarMoeda(item.corretivas)}</TableCell>
+                    <TableCell className="text-right text-xs text-slate-600 dark:text-slate-400 font-mono">{formatarMoeda(item.pecas)}</TableCell>
+                    <TableCell className="text-right text-xs text-slate-600 dark:text-slate-400 font-mono">{formatarMoeda(item.multas)}</TableCell>
+                    <TableCell className="text-right text-xs text-slate-600 dark:text-slate-400 font-mono">{formatarMoeda(item.docSeguroIpva)}</TableCell>
+                    <TableCell className="text-right font-bold text-slate-900 dark:text-slate-100 font-mono text-sm">{formatarMoeda(item.custoTotal)}</TableCell>
+                    <TableCell className="text-center font-mono text-xs text-slate-600 dark:text-slate-400">{item.kmRodado.toLocaleString()} km</TableCell>
+                    <TableCell className="text-right font-mono font-bold text-blue-600 dark:text-blue-400 text-sm">
+                      R$ {item.custoPorKm.toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>
-          
-          {/* Paginação */}
-          {totalPaginas > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-slate-50">
-              <span className="text-xs text-slate-500">
-                Mostrando <strong className="text-slate-900">{(paginaAtual - 1) * itensPorPagina + 1}</strong> a <strong className="text-slate-900">{Math.min(paginaAtual * itensPorPagina, despesasFiltradas.length)}</strong> de {despesasFiltradas.length}
-              </span>
-              <div className="flex items-center gap-1">
-                <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPaginaAtual(p => Math.max(1, p - 1))} disabled={paginaAtual === 1}><ChevronLeft className="w-4 h-4" /></Button>
-                <div className="text-xs font-medium text-slate-600 px-3">Página {paginaAtual} de {totalPaginas}</div>
-                <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setPaginaAtual(p => Math.min(totalPaginas, p + 1))} disabled={paginaAtual === totalPaginas}><ChevronRight className="w-4 h-4" /></Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
+
     </div>
   );
 }
